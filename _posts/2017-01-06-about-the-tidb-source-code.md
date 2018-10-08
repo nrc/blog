@@ -72,23 +72,23 @@ type Executor interface {
 	
 All kinds of executors implement this interface. The executing engine in TiDB adopts the `Volcano` model where the executors interact with each other through the above 3 interfaces. Each executor only needs to access the data through the `Next` interface and the meta data through the `Schema` interface.
 
-+ [plan](https://github.com/pingcap/tidb/tree/master/plan)
++ [plan](https://github.com/pingcap/tidb/tree/rc2.3/plan)
 
 	This is the core of the entire SQL layer. After a SQL statement is parsed to an abstract syntax tree (AST), the query plan is generated and optimized (including logical optimization and physical optimization) in this package. 
 
 	The following functions are also included in this package:
 	
-	+ [`validator.go`](https://github.com/pingcap/tidb/blob/master/plan/validator.go): Validates the AST.
+	+ [`validator.go`](https://github.com/pingcap/tidb/blob/rc2.3/plan/validator.go): Validates the AST.
 	
-	+ [`preprocess.go`](https://github.com/pingcap/tidb/blob/master/plan/preprocess.go): Currently, there is only `name resolve`.
+	+ [`preprocess.go`](https://github.com/pingcap/tidb/blob/rc2.3/plan/preprocess.go): Currently, there is only `name resolve`.
 	
-	+ [`resolver.go`](https://github.com/pingcap/tidb/blob/master/plan/resolver.go): Parses the name. To parse and bind the identifier of database/table/column/alias to the corresponding column or Field.
+	+ [`resolver.go`](https://github.com/pingcap/tidb/blob/rc2.3/plan/resolver.go): Parses the name. To parse and bind the identifier of database/table/column/alias to the corresponding column or Field.
 	
-	+ [`typeinferer.go`](https://github.com/pingcap/tidb/blob/master/plan/typeinferer.go): Infers the type of the result. For SQL statements, the type of the result does not need inference.
+	+ [`typeinferer.go`](https://github.com/pingcap/tidb/blob/rc2.3/plan/typeinferer.go): Infers the type of the result. For SQL statements, the type of the result does not need inference.
 	
-	+ [`logical_plan_builder.go`](https://github.com/pingcap/tidb/blob/master/plan/logical_plan_builder.go): Makes optimized logical query plans.
+	+ [`logical_plan_builder.go`](https://github.com/pingcap/tidb/blob/rc2.3/plan/logical_plan_builder.go): Makes optimized logical query plans.
 	
-	+ [`physical_plan_builder.go`](https://github.com/pingcap/tidb/blob/12c87929b8444571b9e84d2c0d5b85303d27da64/plan/physical_plan_builder.go): Makes the physical query plans based on the logical plans.
+	+ [`physical_plan_builder.go`](https://github.com/pingcap/tidb/blob/rc2.3/plan/physical_plan_builder.go): Makes the physical query plans based on the logical plans.
 
 + [privilege](https://github.com/pingcap/tidb/tree/master/privilege)
 
@@ -227,10 +227,10 @@ The entry point of the process is in the [`session.go`](https://github.com/pingc
 
 1. First, call `Compile()` to parse the SQL statement using `tidb.Parse()` and get a list of `stmt` where each statement is an AST and each syntax unit is a Node of the AST. The structure is defined in the [ast](https://github.com/pingcap/tidb/tree/master/ast) package.
 2. After the AST is got, call the the `Compiler` in the [executor](https://github.com/pingcap/tidb/tree/master/executor) package. Input the AST and get `Compiler.Compile()`. During this process, the statement validation, query plan generation and optimization are all completed.
-3. In `Compiler.Compile()`, call `plan.Validate()` in [plan/validator.go](https://github.com/pingcap/tidb/blob/master/plan/validator.go) to validate the statement and then go to the `Preprocess` process. At the current stage, `Preprocess` has only finished name parsing and bound the column or alias name to the corresponding field. Take the "select c from t;" statement for an example, `Preprocess` binds the name `c` to the corresponding column in the table `t`. See [plan/resolver.go](https://github.com/pingcap/tidb/blob/master/plan/resolver.go) for the detailed implementation. After this, enter `optimizer.Optimize()`.
-4. In the `Optimize()` method, infer the result of each node in AST. Take the "select 1, 'xx', c from t;” statement as an example, for the select fields, the first field is "1" whose type is `Longlong`; the second field is "'xx'" whose field is `VarString`; the third field is "c" whose type is the type of column `c` in the table `t`. Note that besides the type information, the other information like charset also needs to be inferred. See [plan/typeinferer.go](https://github.com/pingcap/tidb/blob/master/plan/typeinferer.go) for the detailed implementation.
+3. In `Compiler.Compile()`, call `plan.Validate()` in [plan/validator.go](https://github.com/pingcap/tidb/blob/rc2.3/plan/validator.go) to validate the statement and then go to the `Preprocess` process. At the current stage, `Preprocess` has only finished name parsing and bound the column or alias name to the corresponding field. Take the "select c from t;" statement for an example, `Preprocess` binds the name `c` to the corresponding column in the table `t`. See [plan/resolver.go](https://github.com/pingcap/tidb/blob/rc2.3/plan/resolver.go) for the detailed implementation. After this, enter `optimizer.Optimize()`.
+4. In the `Optimize()` method, infer the result of each node in AST. Take the "select 1, 'xx', c from t;” statement as an example, for the select fields, the first field is "1" whose type is `Longlong`; the second field is "'xx'" whose field is `VarString`; the third field is "c" whose type is the type of column `c` in the table `t`. Note that besides the type information, the other information like charset also needs to be inferred. See [plan/typeinferer.go](https://github.com/pingcap/tidb/blob/rc2.3/plan/typeinferer.go) for the detailed implementation.
 5. After the type inference, use the `planBuilder.build()` method for logical optimization which is to do equivalent transformation and simplification for AST based on the algebraic operation. For example, "select c from t where c > 1+1*2;" can be equivalently transformed to "select c from t where c > 3;".
-4. After the logical optimization, the next step is physical optimization. The process involves generating query plan tree and transforming the tree according to the index, rules and the cost model to reduce the cost of the query process. The entry point is in the `doOptimize()` method in the [plan/optimizer.go ](https://github.com/pingcap/tidb/blob/master/plan/optimizer.go) file.
+4. After the logical optimization, the next step is physical optimization. The process involves generating query plan tree and transforming the tree according to the index, rules and the cost model to reduce the cost of the query process. The entry point is in the `doOptimize()` method in the [plan/optimizer.go ](https://github.com/pingcap/tidb/blob/rc2.3/plan/optimizer.go) file.
 5. When the query plan is generated, it will be transformed to the executor. Use the `Exec` interface to get the `RecordSet` object and call the `Next()` method to get the query result.
 
 # The optimizer
@@ -251,9 +251,9 @@ There are following types of optimization methods:
 	
 	This type of optimizer is seldom used, especially in OLTP databases. 
 
-The codes for the TiDB optimizer is included in the [plan](https://github.com/pingcap/tidb/tree/master/plan) package. The package is mainly to transform an AST to a query plan tree. The nodes of the tree are different types of logical operator and physical operator. All sorts of optimization towards the query plan are all based on the methods of calling the root node, optimizing all the related nodes recursively, then transforming and trimming each node on the tree.
+The codes for the TiDB optimizer is included in the [plan](https://github.com/pingcap/tidb/tree/rc2.3/plan) package. The package is mainly to transform an AST to a query plan tree. The nodes of the tree are different types of logical operator and physical operator. All sorts of optimization towards the query plan are all based on the methods of calling the root node, optimizing all the related nodes recursively, then transforming and trimming each node on the tree.
 
-The most important interfaces are included in the [plan.go](https://github.com/pingcap/tidb/blob/master/plan/plan.go) file, including:
+The most important interfaces are included in the [plan.go](https://github.com/pingcap/tidb/blob/rc2.3/plan/plan.go) file, including:
 
 + Plan: the interface to all the query plans 
 + LogicalPlan: the logical query plan which needs to be implemented by all the logical operator
